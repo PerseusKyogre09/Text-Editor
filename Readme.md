@@ -1,6 +1,6 @@
 # Python Text Editor
 
-A simple text editor built using Python's `tkinter` library. The editor supports basic text editing features such as bold, italic, and underline, along with font selection, font size changes, and file handling options like open and save.
+Built during my time in school. A simple text editor built using Python's `tkinter` library. The editor supports basic text editing features such as bold, italic, and underline, along with font selection, font size changes, and file handling options like open and save.
 
 ## Features
 
