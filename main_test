@@ -1,0 +1,139 @@
+import customtkinter as ctk
+from tkinter import Menu, colorchooser, filedialog, messagebox
+from PIL import Image, ImageDraw
+from reportlab.pdfgen import canvas
+
+# Initialize customtkinter appearance
+ctk.set_appearance_mode("dark")
+ctk.set_default_color_theme("blue")
+
+class BoardApp(ctk.CTk):
+    def __init__(self):
+        super().__init__()
+
+        self.title("Custom Board Notepad")
+        self.geometry("800x600")
+        self.configure(bg="black")
+
+        # Drawing canvas and settings
+        self.canvas = ctk.CTkCanvas(self, bg="white", highlightthickness=0)
+        self.canvas.pack(expand=True, fill="both", padx=5, pady=5)
+
+        self.brush_color = "black"
+        self.text_color = "black"
+        self.brush_size = 5
+        self.is_drawing = True  # Toggle between drawing and typing
+
+        # Image for saving the drawing
+        self.image = Image.new("RGB", (800, 600), "white")
+        self.draw = ImageDraw.Draw(self.image)
+
+        # Menu bar
+        self.create_menu_bar()
+
+        # Bind events for drawing and typing
+        self.canvas.bind("<B1-Motion>", self.paint)         # Bind paint to mouse drag
+        self.canvas.bind("<Button-1>", self.start_draw)     # Set start point on click
+        self.canvas.bind("<ButtonRelease-1>", self.stop_draw)  # Clear points after draw
+        self.old_x, self.old_y = None, None  # Track previous mouse position
+
+    def create_menu_bar(self):
+        menu_bar = Menu(self)
+
+        # File menu
+        file_menu = Menu(menu_bar, tearoff=0)
+        file_menu.add_command(label="New", command=self.clear_board)
+        file_menu.add_command(label="Open", command=self.open_file)
+        file_menu.add_command(label="Save as PNG", command=lambda: self.save_board("PNG"))
+        file_menu.add_command(label="Save as JPG", command=lambda: self.save_board("JPG"))
+        file_menu.add_command(label="Save as PDF", command=self.save_as_pdf)
+        file_menu.add_separator()
+        file_menu.add_command(label="Exit", command=self.quit)
+        menu_bar.add_cascade(label="File", menu=file_menu)
+
+        # Brush menu
+        brush_menu = Menu(menu_bar, tearoff=0)
+        brush_menu.add_command(label="Choose Brush Color", command=self.choose_brush_color)
+        brush_menu.add_command(label="Choose Text Color", command=self.choose_text_color)
+        brush_menu.add_command(label="Set Brush Size", command=self.set_brush_size)
+        menu_bar.add_cascade(label="Brush", menu=brush_menu)
+
+        # Mode menu
+        mode_menu = Menu(menu_bar, tearoff=0)
+        mode_menu.add_command(label="Toggle Draw/Text", command=self.toggle_mode)
+        menu_bar.add_cascade(label="Mode", menu=mode_menu)
+
+        self.config(menu=menu_bar)
+
+    def choose_brush_color(self):
+        color = colorchooser.askcolor(color=self.brush_color)[1]
+        if color:
+            self.brush_color = color
+
+    def choose_text_color(self):
+        color = colorchooser.askcolor(color=self.text_color)[1]
+        if color:
+            self.text_color = color
+
+    def set_brush_size(self):
+        size_window = ctk.CTkToplevel(self)
+        size_window.title("Brush Size")
+        size_window.geometry("300x100")
+
+        slider = ctk.CTkSlider(size_window, from_=1, to=20, command=lambda v: self.update_brush_size(int(v)))
+        slider.set(self.brush_size)
+        slider.pack(pady=20)
+
+    def update_brush_size(self, size):
+        self.brush_size = size
+
+    def toggle_mode(self):
+        self.is_drawing = not self.is_drawing
+        messagebox.showinfo("Mode", "Switched to Drawing Mode" if self.is_drawing else "Switched to Text Mode")
+
+    def start_draw(self, event):
+        """Sets the starting point for drawing."""
+        if self.is_drawing:
+            self.old_x, self.old_y = event.x, event.y
+
+    def stop_draw(self, event):
+        """Resets the previous point for drawing."""
+        self.old_x, self.old_y = None, None
+
+    def paint(self, event):
+        """Draws a line from the last known point to the current point."""
+        if self.is_drawing and self.old_x and self.old_y:
+            x, y = event.x, event.y
+            self.canvas.create_line(self.old_x, self.old_y, x, y, fill=self.brush_color, width=self.brush_size)
+            self.draw.line([self.old_x, self.old_y, x, y], fill=self.brush_color, width=self.brush_size)
+            self.old_x, self.old_y = x, y  # Update the previous point
+
+    def save_board(self, file_type):
+        file_path = filedialog.asksaveasfilename(defaultextension=f".{file_type.lower()}",
+                                                 filetypes=[(f"{file_type} Files", f"*.{file_type.lower()}"), ("All Files", "*.*")])
+        if file_path:
+            self.image.save(file_path, file_type)
+
+    def save_as_pdf(self):
+        file_path = filedialog.asksaveasfilename(defaultextension=".pdf", filetypes=[("PDF Files", "*.pdf"), ("All Files", "*.*")])
+        if file_path:
+            pdf = canvas.Canvas(file_path, pagesize=(800, 600))
+            pdf.drawImage(self.image, 0, 0)
+            pdf.save()
+
+    def open_file(self):
+        file_path = filedialog.askopenfilename(filetypes=[("Image Files", "*.png *.jpg *.jpeg"), ("All Files", "*.*")])
+        if file_path:
+            self.image = Image.open(file_path)
+            self.draw = ImageDraw.Draw(self.image)
+            self.canvas.image = self.image
+
+    def clear_board(self):
+        self.canvas.delete("all")
+        self.image = Image.new("RGB", (800, 600), "white")
+        self.draw = ImageDraw.Draw(self.image)
+
+# Run the application
+if __name__ == "__main__":
+    app = BoardApp()
+    app.mainloop()
